@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Payment Status</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .status { font-size: 1.2rem; margin-top: 12px; }
+        .spinner { animation: spin 1s linear infinite; display: inline-block; margin-right: 8px; }
+        @keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+    </style>
+</head>
+<body>
+    <h2>Payment Status</h2>
+    <p>Transaction ID: <strong th:text="${transactionId}">txn-id</strong></p>
+
+    <div id="statusBox" class="status">
+        <span id="statusIcon" class="spinner">⏳</span>
+        <span id="statusText">Processing payment... please wait.</span>
+    </div>
+
+    <!-- SockJS + Stomp (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+    <script th:inline="javascript">
+    /*<![CDATA[*/
+      const transactionId = /*[[${transactionId}]]*/ 'txn-unknown';
+
+      // Connect to WebSocket endpoint
+      const socket = new SockJS('/ws');
+      const stompClient = Stomp.over(socket);
+
+      // Optional: suppress debug logs
+      stompClient.debug = null;
+
+      stompClient.connect({}, function(frame) {
+          console.log('Connected: ' + frame);
+          const topic = '/topic/payment-status/' + transactionId;
+          stompClient.subscribe(topic, function(message) {
+              // Server sends JSON payload
+              const payload = JSON.parse(message.body);
+              const status = payload.status;
+              const msg = payload.message || '';
+
+              const statusIcon = document.getElementById('statusIcon');
+              const statusText = document.getElementById('statusText');
+
+              if (status === 'SUCCESS' || status === 'AcceptedSettlementCompleted') {
+                  statusIcon.textContent = '✅';
+                  statusText.textContent = 'Payment successful. ' + msg;
+              } else if (status === 'PENDING' || status === 'AcceptedSettlementInProcess') {
+                  statusIcon.textContent = '⏳';
+                  statusText.textContent = 'Payment is processing... ' + msg;
+              } else {
+                  statusIcon.textContent = '❌';
+                  statusText.textContent = 'Payment failed: ' + msg;
+              }
+          });
+      }, function(error) {
+          console.error('STOMP error', error);
+          document.getElementById('statusText').textContent = 'Connection error. Try refreshing the page.';
+      });
+    /*]]>*/
+    </script>
+</body>
+</html>
