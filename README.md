@@ -15,3 +15,8 @@ curl -X POST http://localhost:8080/lfi/webhook/payment \
 After you POST, the browser page will update immediately to show: Payment successful. Settled by bank. Ref: BANKREF001curl -X POST http://localhost:8080/lfi/webhook/payment \
   -H "Content-Type: application/json" \
   -d '{"transactionId":"txn-123","status":"FAILED","message":"Insufficient funds"}'
+
+
+  # comands 
+
+  wscat -c ws://localhost:8080/ws/websocket
